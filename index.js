@@ -1,4 +1,5 @@
 const { OFFERS, WEIGHT_UNIT_PRICE, DISTANCE_UNIT_PRICE } = require('./constants')
+const prompt = require('prompt')
 
 // todo: offer code to Upper case
 const calculateDiscount = (offerCode, distance, weight, BASE_COST) => {
@@ -17,6 +18,10 @@ const calculateDiscount = (offerCode, distance, weight, BASE_COST) => {
     discount,
     totalCost: originalCost - discount
   }
+}
+
+const commandLineInput = () => {
+    prompt.start()
 }
 
 const validateOffer = (offerCode) => {
