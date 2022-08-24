@@ -1,50 +1,65 @@
 class Node:
-    def __init__(self, value, parent=None, route=[]):
-        self.value = value
+    def __init__(self, weight, parent=None, route=[]):
+        self.weight = weight
         self.left = None
         self.right = None
         self.parent = parent
         self.route = route
-        
+
     def __repr__(self):
-        return str(self.value)
+        return str(self.weight)
 
 
-def max_sum_below_number(lst, limit):
-    lst = sorted(lst)
-    root = Node(0, route=[0])
-    node_lst = []
-    node_lst.append([root])
-    max_node = root
-    max_distance = root
-    for i in range(len(lst)):
-        level = []
-        nodes = node_lst[i]
-        # print('nodes',nodes)
-        for node in nodes:
-            # print('route', node.route)
-            if node.value > max_node.value:
-                # print('max', max_node)
-                max_node = node
-                # node.route.append(max_node.weight)
+class Pkg:
+    def __init__(self, id, weight, distance):
+        self.weight = weight
+        self.distance = distance
+        self.id = id
 
-            if node.value + lst[i] > limit:
-                continue
+    def __repr__(self):
+        return str(self.id)
+        
 
-            node.left = Node(node.value, parent=node, route=node.route+[0])
-            level.append(node.left)
-            # print(node.route)
-            node.right = Node(node.value + lst[i], parent=node, route=node.route+[lst[i]])
-            
+def max_sum_below_number(id, weight, distance, limit):
+    pkgs = []
 
+    for i in range(len(id)):
+        pkgs.append(Pkg(id[i], weight[i], distance[i]))
+    extra_pkg = Pkg('extra', limit+1, 999)
+    pkgs.append(extra_pkg)
 
-            level.append(node.right)
-        node_lst.append(level)
-        # print(node_lst)
-    # print('parent', max_node.parent.weight)
-    print(max_node.route, max_node.value)
+    pkgs.sort(key=lambda x: (x.weight, x.distance))
+    pkg_order = []
 
+    while len(pkgs) > 1:
+        root = Node(0, route=[])
+        node_lst = []
+        node_lst.append([root])
+        max_node = root
+        for i in range(len(pkgs)):
+            level = []
+            nodes = node_lst[i]
+            for node in nodes:
+                if node.weight > max_node.weight:
+                    max_node = node
+
+                if node.weight + pkgs[i].weight > limit:
+                    continue
+
+                node.left = Node(node.weight, parent=node, route=node.route)
+                level.append(node.left)
+                node.right = Node(node.weight + pkgs[i].weight, parent=node, route=node.route + [pkgs[i].id])
+
+                level.append(node.right)
+            node_lst.append(level)
+
+        pkg_order.append(max_node.route)
+        pkgs = [pkg for pkg in pkgs if pkg.id not in max_node.route]
+    return pkg_order
 
 if __name__ == '__main__':
-    l = [50, 75, 175, 110, 155]
-    max_sum_below_number(l, 200)
+    id = ['pkg1', 'pkg2', 'pkg3', 'pkg4', 'pkg5']
+    weight = [50, 75, 175, 110, 155]
+    distance = [30, 125, 100, 60, 95]
+    pkg_order = max_sum_below_number(id, weight, distance, 200)
+    print(pkg_order)
