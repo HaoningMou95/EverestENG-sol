@@ -1,5 +1,6 @@
 const { OFFERS, WEIGHT_UNIT_PRICE, DISTANCE_UNIT_PRICE } = require('./constants')
 const prompt = require('prompt')
+const { getPackageOrder } = require('./algorithm')
 
 const validateOffer = (offerCode) => {
   const valid = offerCode in OFFERS
@@ -22,12 +23,11 @@ const calculateDiscount = (offerCode, distance, weight, BASE_COST) => {
     if (validateDistanceAndWeight(offerObj, distance, weight)) {
       discount = originalCost * offerObj.discount
     }
-  }
-  else {
+  } else {
     console.log('Invalid Offer Code for below package. Inputted code: ', offerCode)
     return {
-        discount: 0,
-        totalCost: originalCost - discount
+      discount: 0,
+      totalCost: originalCost - discount
     }
   }
   return {
@@ -36,10 +36,13 @@ const calculateDiscount = (offerCode, distance, weight, BASE_COST) => {
   }
 }
 
-// todo: offer code to Upper case
 const commandLineInput = () => {
   prompt.start()
 
+  let pkgs = []
+  let moneyCostResult = []
+  let timeCostResult = []
+  // get base cost and number of packages
   prompt.get(['BASE_COST_&_PACKAGE_NO'], function (err, result) {
     if (err) {
       return onStep1Err('Invalid Inputs For BASE_COST_&_PACKAGE_NO: ', result)
@@ -48,8 +51,9 @@ const commandLineInput = () => {
     const formatStep1ToArray = result['BASE_COST_&_PACKAGE_NO'].split(' ')
     const BASE_COST = parseFloat(formatStep1ToArray[0])
     const PACKAGE_NO = parseInt(formatStep1ToArray[1])
+
     if (isNaN(BASE_COST) || isNaN(PACKAGE_NO) || PACKAGE_NO < 1 || BASE_COST <= 0) {
-                console.log('step 2')
+      console.log('step 2')
       return onStep1Err('Invalid Inputs For BASE_COST_&_PACKAGE_NO: ', result)
     }
     //get all packages command instruction
@@ -60,7 +64,8 @@ const commandLineInput = () => {
       }
       return arr
     }
-    //input each packages info
+
+    //get each packages info
     prompt.get(getStep2Key(), function (err, result) {
       if (err) {
         return onStep2Err(`Invalid Inputs For Package Info: `, result)
@@ -72,28 +77,134 @@ const commandLineInput = () => {
         const WEIGHT = parseFloat(formatStep2ToArray[1])
         const DISTANCE = parseFloat(formatStep2ToArray[2])
         const OFFER_CODE = formatStep2ToArray[3]
+
         //todo handle err
-        if ((!PKG_ID || isNaN(WEIGHT) || isNaN(DISTANCE) || !OFFER_CODE)
-            || (WEIGHT < 1 || DISTANCE < 1)
-        ) {
+        if (!PKG_ID || isNaN(WEIGHT) || isNaN(DISTANCE) || !OFFER_CODE || WEIGHT < 1 || DISTANCE < 1) {
           return onStep2Err(`Invalid Inputs For Package${i}: `, result[`PKG_${i}_INFO`])
         }
         OFFER_CODE_UPPERCASE = OFFER_CODE.toUpperCase()
-        const calculationResult = calculateDiscount(OFFER_CODE_UPPERCASE, DISTANCE, WEIGHT, BASE_COST)
-        console.log(`${PKG_ID} ${calculationResult.discount} ${calculationResult.totalCost}`)
+        pkgs.push({ id: PKG_ID, weight: WEIGHT, distance: DISTANCE, offerCode: OFFER_CODE_UPPERCASE })
+        moneyCostResult.push({
+          id: PKG_ID,
+          ...calculateDiscount(OFFER_CODE_UPPERCASE, DISTANCE, WEIGHT, BASE_COST)
+        })
       }
+      // get delivery time info and calculate delivery time
+      prompt.get(['VEHICLE_NO&MAX_SPEED&MAX_WEIGHT'], function (err, result) {
+        if (err) {
+          return onStep1Err('Invalid Inputs For VEHICLE_NO&MAX_SPEED&MAX_WEIGHT: ', result)
+        }
+
+        const formatStep3ToArray = result['VEHICLE_NO&MAX_SPEED&MAX_WEIGHT'].split(' ')
+        const VEHICLE_NO = parseFloat(formatStep3ToArray[0])
+        const MAX_SPEED = parseInt(formatStep3ToArray[1])
+        const MAX_WEIGHT = parseInt(formatStep3ToArray[2])
+
+        if (isNaN(VEHICLE_NO) || isNaN(MAX_SPEED) || isNaN(MAX_WEIGHT) || VEHICLE_NO < 1 || MAX_SPEED < 1 || MAX_WEIGHT < 1) {
+          console.log('step 3')
+          return onStep1Err('Invalid Inputs For VEHICLE_NO&MAX_SPEED&MAX_WEIGHT: ', result)
+        }
+
+        timeCostResult = getTimeCost(pkgs, MAX_WEIGHT, MAX_SPEED)
+
+        const pkgTimeAndMoneyCost = getOrderTimeAndMoneyCost(timeCostResult, moneyCostResult)
+        console.log('Package Order: ', pkgTimeAndMoneyCost)
+        // console.log('pkgTimeAndMoneyCost', pkgTimeAndMoneyCost)
+        const finalResult = getDeliveryTime(pkgTimeAndMoneyCost, VEHICLE_NO)
+        console.log('finalResult', finalResult)
+
+        return finalResult
+      })
     })
   })
+}
 
-  function onStep1Err(err, result) {
-    console.log(err + result['BASE_COST_&_PACKAGE_NO'])
-    return 1
+const getDeliveryTime = (pkgTimeAndMoneyCost, VEHICLE_NO) => {
+  const vehicles = new Array(VEHICLE_NO).fill({ currentTime: 0 })
+  let pkgTimeAndMoneyCostCopy = []
+  while (pkgTimeAndMoneyCost.length > 0) {
+    minIndex = findMinTimeVehicle(vehicles)
+      if (pkgTimeAndMoneyCost && pkgTimeAndMoneyCost.length > 0) {
+        vehicles[minIndex] = { ...vehicles[minIndex], info: pkgTimeAndMoneyCost.shift() }
+        let maxPackageTime = getMaxTime(vehicles[minIndex].info)
+        console.log('-------------info:', vehicles[minIndex].info, ' time: ',  maxPackageTime)
+        console.log(`=====current time vehicle`, vehicles[minIndex].currentTime)
+        if (vehicles[minIndex].info) {
+          for (package of vehicles[minIndex].info)
+          {
+            // console.log('package', package)
+            if(package.time < maxPackageTime)
+            {
+              pkgTimeAndMoneyCostCopy.push({
+                ...package,
+                arriveTime: package.time + vehicles[minIndex].currentTime
+              })
+            }
+            else{
+              pkgTimeAndMoneyCostCopy.push({
+                ...package,
+                arriveTime: maxPackageTime + vehicles[minIndex].currentTime
+              })
+            }
+          }
+        }
+        vehicles[minIndex].currentTime += maxPackageTime * 2 
+        console.log(`=====current time vehicles=======`, vehicles[minIndex].currentTime)
+      }
+    
+  }
+  return pkgTimeAndMoneyCostCopy
+}
+
+const getMaxTime = (info) => {
+  return info.reduce((acc, cur) => {
+    return acc.distance > cur.distance ? acc : cur
+  }).time
+}
+
+const findMinTimeVehicle = (vehicles) => {
+  let min = -1
+  for (let i = 0; i < vehicles.length; i++) {
+    if (min === -1 || vehicles[i].currentTime < vehicles[min].currentTime) {
+      min = i
+    }
+  }
+  return min
+}
+
+const getOrderTimeAndMoneyCost = (timeCostResult, moneyCostResult) => {
+  for (let i = 0; i < timeCostResult.length; i++) {
+    for (item in timeCostResult[i]) {
+      const pkg = moneyCostResult.find((listItem) => listItem.id === timeCostResult[i][item].id)
+      timeCostResult[i][item] = { ...timeCostResult[i][item], ...pkg }
+    }
+  }
+  const pkgTimeAndMoneyCost = timeCostResult
+  return pkgTimeAndMoneyCost
+}
+
+const getTimeCost = (pkgs, limit, speed) => {
+  const pkgs_order = getPackageOrder(pkgs, limit)
+  for (let i = 0; i < pkgs_order.length; i++) {
+    for (let j = 0; j < pkgs_order[i].length; j++) {
+      pkgs_order[i][j] = {
+        ...pkgs_order[i][j],
+        time: Math.floor((pkgs_order[i][j].distance / speed) * 100 ) / 100
+      }
+    }
   }
 
-  function onStep2Err(err, result) {
-    console.log(err + result)
-    return 1
-  }
+  return pkgs_order
+}
+
+onStep1Err = (err, result) => {
+  console.log(err + result['BASE_COST_&_PACKAGE_NO'])
+  return 1
+}
+
+onStep2Err = (err, result) => {
+  console.log(err + result)
+  return 1
 }
 
 commandLineInput()
