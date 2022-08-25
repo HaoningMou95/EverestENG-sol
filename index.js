@@ -189,17 +189,17 @@ const getOrderTimeAndMoneyCost = (timeCostResult, moneyCostResult) => {
 }
 
 const getTimeCost = (pkgs, limit, speed) => {
-  const pkgs_order = getPackageOrder(pkgs, limit)
-  for (let i = 0; i < pkgs_order.length; i++) {
-    for (let j = 0; j < pkgs_order[i].length; j++) {
-      pkgs_order[i][j] = {
-        ...pkgs_order[i][j],
-        time: _floorNumber(pkgs_order[i][j].distance / speed)
+  const pkgsOrder = getPackageOrder(pkgs, limit)
+  for (let i = 0; i < pkgsOrder.length; i++) {
+    for (let j = 0; j < pkgsOrder[i].length; j++) {
+      pkgsOrder[i][j] = {
+        ...pkgsOrder[i][j],
+        time: _floorNumber(pkgsOrder[i][j].distance / speed)
       }
     }
   }
 
-  return pkgs_order
+  return pkgsOrder
 }
 
 onStep1Err = (err, result) => {

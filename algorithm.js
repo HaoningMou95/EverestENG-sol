@@ -24,55 +24,55 @@ const getPackageOrder = (list, limit) => {
   }
 
   // create an extra package to represent the limit
-  const extra_pkg = new Package('extra', limit + 1, 999)
-  pkgs.push(extra_pkg)
+  const extraPkg = new Package('extra', limit + 1, 999)
+  pkgs.push(extraPkg)
 
   // sort by weight and distance
-  let sorted_pkgs = sortByWeightAndDistance(pkgs)
+  let sortedPkgs = sortByWeightAndDistance(pkgs)
 
-  let pkg_order = []
+  let pkgOrder = []
 
   // create a tree to implement the knapsack algorithm
-  while (sorted_pkgs.length > 1) {
+  while (sortedPkgs.length > 1) {
     const root = new Node(0, null, [])
-    const node_lst = []
-    node_lst.push([root])
-    let max_node = root
+    const nodeLst = []
+    nodeLst.push([root])
+    let maxNode = root
 
-    for (let i = 0; i < sorted_pkgs.length; i++) {
+    for (let i = 0; i < sortedPkgs.length; i++) {
       const level = []
-      const nodes = node_lst[i]
+      const nodes = nodeLst[i]
 
       for (let j = 0; j < nodes.length; j++) {
-        if (nodes[j].weight > max_node.weight) {
-          max_node = nodes[j]
+        if (nodes[j].weight > maxNode.weight) {
+          maxNode = nodes[j]
         }
-        if (nodes[j].weight + sorted_pkgs[i].weight > limit) continue
+        if (nodes[j].weight + sortedPkgs[i].weight > limit) continue
 
         nodes[j].left = new Node(nodes[j].weight, nodes[j], nodes[j]['route'])
         level.push(nodes[j].left)
 
-        const route = nodes[j].route.concat([sorted_pkgs[i].id])
-        nodes[j].right = new Node(nodes[j].weight + sorted_pkgs[i].weight, nodes[j], route)
+        const route = nodes[j].route.concat([sortedPkgs[i].id])
+        nodes[j].right = new Node(nodes[j].weight + sortedPkgs[i].weight, nodes[j], route)
 
         level.push(nodes[j].right)
       }
-      node_lst.push(level)
+      nodeLst.push(level)
     }
-    pkg_order.push(max_node.route)
+    pkgOrder.push(maxNode.route)
     // remove the packages that have been picked
-    sorted_pkgs = sorted_pkgs.filter((pkg) => !max_node.route.includes(pkg.id))
+    sortedPkgs = sortedPkgs.filter((pkg) => !maxNode.route.includes(pkg.id))
   }
-  pkg_order = getDistanceForEachPkg(pkg_order, list)
-  return pkg_order
+  pkgOrder = getDistanceForEachPkg(pkgOrder, list)
+  return pkgOrder
 }
 
-const getDistanceForEachPkg = (pkg_order, list) => {
+const getDistanceForEachPkg = (pkgOrder, list) => {
   const pkgListWithDistance = []
-  for (let i = 0; i < pkg_order.length; i++) {
+  for (let i = 0; i < pkgOrder.length; i++) {
     const pkgList = []
-    for (item in pkg_order[i]) {
-      const pkg = list.find((listItem) => listItem.id === pkg_order[i][item])
+    for (item in pkgOrder[i]) {
+      const pkg = list.find((listItem) => listItem.id === pkgOrder[i][item])
       pkgList.push({
         id: pkg.id,
         distance: pkg.distance
