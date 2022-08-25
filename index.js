@@ -24,15 +24,15 @@ const calculateDiscount = (offerCode, distance, weight, BASE_COST) => {
       discount = originalCost * offerObj.discount
     }
   } else {
-    console.log('Invalid Offer Code for below package. Inputted code: ', offerCode)
+    console.log('Invalid Offer Code. Inputted code: ', offerCode)
     return {
       discount: 0,
-      totalCost: originalCost - discount
+      totalCost: _floorNumber(originalCost - discount) 
     }
   }
   return {
     discount,
-    totalCost: originalCost - discount
+    totalCost: _floorNumber(originalCost - discount) 
   }
 }
 
@@ -105,23 +105,26 @@ const commandLineInput = () => {
           return onStep1Err('Invalid Inputs For VEHICLE_NO&MAX_SPEED&MAX_WEIGHT: ', result)
         }
 
-        
         timeCostResult = getTimeCost(pkgs, MAX_WEIGHT, MAX_SPEED)
 
         // get package delivery time
         const pkgTimeAndMoneyCost = getOrderTimeAndMoneyCost(timeCostResult, moneyCostResult)
         const finalResult = getDeliveryTime(pkgTimeAndMoneyCost, VEHICLE_NO)
-
+        
         displayResult(finalResult)
       })
     })
   })
 }
 
+const _floorNumber = (num) => {
+  return Math.floor(num * 100) / 100
+}
+
 const displayResult = (finalResult) => {
-  const sortedResult = finalResult.sort((a,b) => (a.id > b.id) ? 1 : ((b.id > a.id) ? -1 : 0))
+  const sortedResult = finalResult.sort((a, b) => (a.id > b.id ? 1 : b.id > a.id ? -1 : 0))
   for (item of sortedResult) {
-    console.log(item.id,' ', item.discount,' ', item.totalCost, ' ',item.arriveTime)
+    console.log(item.id, ' ', _floorNumber(item.discount), ' ', _floorNumber(item.totalCost), ' ', _floorNumber(item.arriveTime))
   }
 }
 
@@ -131,33 +134,29 @@ const getDeliveryTime = (pkgTimeAndMoneyCost, VEHICLE_NO) => {
 
   // assign each package to a vehicle
   while (pkgTimeAndMoneyCost.length > 0) {
-    // find available vehicle 
+    // find available vehicle
     minIndex = findMinTimeVehicle(vehicles)
-      if (pkgTimeAndMoneyCost && pkgTimeAndMoneyCost.length > 0) {
-        vehicles[minIndex] = { ...vehicles[minIndex], info: pkgTimeAndMoneyCost.shift() }
-        let maxPackageTime = getMaxTime(vehicles[minIndex].info)
-        // update vehicle time & package arrive time
-        if (vehicles[minIndex].info) {
-          for (package of vehicles[minIndex].info)
-          {
-            if(package.time < maxPackageTime)
-            {
-              pkgTimeAndMoneyCostCopy.push({
-                ...package,
-                arriveTime: package.time + vehicles[minIndex].currentTime
-              })
-            }
-            else{
-              pkgTimeAndMoneyCostCopy.push({
-                ...package,
-                arriveTime: maxPackageTime + vehicles[minIndex].currentTime
-              })
-            }
+    if (pkgTimeAndMoneyCost && pkgTimeAndMoneyCost.length > 0) {
+      vehicles[minIndex] = { ...vehicles[minIndex], info: pkgTimeAndMoneyCost.shift() }
+      let maxPackageTime = getMaxTime(vehicles[minIndex].info)
+      // update vehicle time & package arrive time
+      if (vehicles[minIndex].info) {
+        for (package of vehicles[minIndex].info) {
+          if (package.time < maxPackageTime) {
+            pkgTimeAndMoneyCostCopy.push({
+              ...package,
+              arriveTime: package.time + vehicles[minIndex].currentTime
+            })
+          } else {
+            pkgTimeAndMoneyCostCopy.push({
+              ...package,
+              arriveTime: maxPackageTime + vehicles[minIndex].currentTime
+            })
           }
         }
-        vehicles[minIndex].currentTime += maxPackageTime * 2 
       }
-    
+      vehicles[minIndex].currentTime += maxPackageTime * 2
+    }
   }
   return pkgTimeAndMoneyCostCopy
 }
@@ -195,7 +194,7 @@ const getTimeCost = (pkgs, limit, speed) => {
     for (let j = 0; j < pkgs_order[i].length; j++) {
       pkgs_order[i][j] = {
         ...pkgs_order[i][j],
-        time: Math.floor((pkgs_order[i][j].distance / speed) * 100 ) / 100
+        time: _floorNumber(pkgs_order[i][j].distance / speed)
       }
     }
   }
