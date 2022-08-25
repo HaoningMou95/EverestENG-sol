@@ -78,7 +78,6 @@ const commandLineInput = () => {
         const DISTANCE = parseFloat(formatStep2ToArray[2])
         const OFFER_CODE = formatStep2ToArray[3]
 
-        //todo handle err
         if (!PKG_ID || isNaN(WEIGHT) || isNaN(DISTANCE) || !OFFER_CODE || WEIGHT < 1 || DISTANCE < 1) {
           return onStep2Err(`Invalid Inputs For Package${i}: `, result[`PKG_${i}_INFO`])
         }
@@ -89,6 +88,7 @@ const commandLineInput = () => {
           ...calculateDiscount(OFFER_CODE_UPPERCASE, DISTANCE, WEIGHT, BASE_COST)
         })
       }
+
       // get delivery time info and calculate delivery time
       prompt.get(['VEHICLE_NO&MAX_SPEED&MAX_WEIGHT'], function (err, result) {
         if (err) {
@@ -105,34 +105,41 @@ const commandLineInput = () => {
           return onStep1Err('Invalid Inputs For VEHICLE_NO&MAX_SPEED&MAX_WEIGHT: ', result)
         }
 
+        
         timeCostResult = getTimeCost(pkgs, MAX_WEIGHT, MAX_SPEED)
 
+        // get package delivery time
         const pkgTimeAndMoneyCost = getOrderTimeAndMoneyCost(timeCostResult, moneyCostResult)
-        console.log('Package Order: ', pkgTimeAndMoneyCost)
-        // console.log('pkgTimeAndMoneyCost', pkgTimeAndMoneyCost)
         const finalResult = getDeliveryTime(pkgTimeAndMoneyCost, VEHICLE_NO)
-        console.log('finalResult', finalResult)
 
-        return finalResult
+        displayResult(finalResult)
       })
     })
   })
 }
 
+const displayResult = (finalResult) => {
+  const sortedResult = finalResult.sort((a,b) => (a.id > b.id) ? 1 : ((b.id > a.id) ? -1 : 0))
+  for (item of sortedResult) {
+    console.log(item.id,' ', item.discount,' ', item.totalCost, ' ',item.arriveTime)
+  }
+}
+
 const getDeliveryTime = (pkgTimeAndMoneyCost, VEHICLE_NO) => {
   const vehicles = new Array(VEHICLE_NO).fill({ currentTime: 0 })
   let pkgTimeAndMoneyCostCopy = []
+
+  // assign each package to a vehicle
   while (pkgTimeAndMoneyCost.length > 0) {
+    // find available vehicle 
     minIndex = findMinTimeVehicle(vehicles)
       if (pkgTimeAndMoneyCost && pkgTimeAndMoneyCost.length > 0) {
         vehicles[minIndex] = { ...vehicles[minIndex], info: pkgTimeAndMoneyCost.shift() }
         let maxPackageTime = getMaxTime(vehicles[minIndex].info)
-        console.log('-------------info:', vehicles[minIndex].info, ' time: ',  maxPackageTime)
-        console.log(`=====current time vehicle`, vehicles[minIndex].currentTime)
+        // update vehicle time & package arrive time
         if (vehicles[minIndex].info) {
           for (package of vehicles[minIndex].info)
           {
-            // console.log('package', package)
             if(package.time < maxPackageTime)
             {
               pkgTimeAndMoneyCostCopy.push({
@@ -149,7 +156,6 @@ const getDeliveryTime = (pkgTimeAndMoneyCost, VEHICLE_NO) => {
           }
         }
         vehicles[minIndex].currentTime += maxPackageTime * 2 
-        console.log(`=====current time vehicles=======`, vehicles[minIndex].currentTime)
       }
     
   }

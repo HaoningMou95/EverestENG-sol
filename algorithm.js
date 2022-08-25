@@ -23,13 +23,16 @@ const getPackageOrder = (list, limit) => {
     pkgs.push(new Package(list[i].id, list[i].weight, list[i].distance))
   }
 
+  // create an extra package to represent the limit
   const extra_pkg = new Package('extra', limit + 1, 999)
   pkgs.push(extra_pkg)
 
+  // sort by weight and distance
   let sorted_pkgs = sortByWeightAndDistance(pkgs)
 
   let pkg_order = []
 
+  // create a tree to implement the knapsack algorithm
   while (sorted_pkgs.length > 1) {
     const root = new Node(0, null, [])
     const node_lst = []
@@ -57,6 +60,7 @@ const getPackageOrder = (list, limit) => {
       node_lst.push(level)
     }
     pkg_order.push(max_node.route)
+    // remove the packages that have been picked
     sorted_pkgs = sorted_pkgs.filter((pkg) => !max_node.route.includes(pkg.id))
   }
   pkg_order = getDistanceForEachPkg(pkg_order, list)
@@ -90,35 +94,5 @@ const sortByWeightAndDistance = (pkgs) => {
 
   return pkgs
 }
-
-// pkgs = [
-//   {
-//     id: 'pkg1',
-//     weight: 50,
-//     distance: 30
-//   },
-//   {
-//     id: 'pkg2',
-//     weight: 75,
-//     distance: 125
-//   },
-//   {
-//     id: 'pkg3',
-//     weight: 175,
-//     distance: 100
-//   },
-//   {
-//     id: 'pkg4',
-//     weight: 110,
-//     distance: 60
-//   },
-//   {
-//     id: 'pkg5',
-//     weight: 155,
-//     distance: 95
-//   }
-// ]
-
-// console.log(getPackageOrder(pkgs, 200))
 
 module.exports = { getPackageOrder }
